@@ -1,0 +1,629 @@
+/* ==========================================================================
+   Data Studio - Hand-Crafted Analytics Design System
+   Linear / Notion / Mixpanel Polish & Aesthetic
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
+
+:root {
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-heading: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+    /* Spacing Scale (4/8/12/16/24/32px) */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+    --space-8: 32px;
+
+    /* Light Theme Palette */
+    --bg-app: #F8FAFC;
+    --bg-surface: #FFFFFF;
+    --bg-subtle: #F1F5F9;
+    --border-subtle: #E2E8F0;
+    --border-strong: #CBD5E1;
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #64748B;
+    --text-faint: #94A3B8;
+
+    /* Accents */
+    --accent-blue: #2563EB;
+    --accent-indigo: #4F46E5;
+    --accent-emerald: #10B981;
+    --accent-amber: #F59E0B;
+    --accent-rose: #EF4444;
+}
+
+/* Global Reset & Typography */
+* {
+    box-sizing: border-box;
+    font-family: var(--font-sans);
+}
+
+body, html, .stApp {
+    font-family: var(--font-sans);
+    color: var(--text-primary);
+    background-color: var(--bg-app);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Streamlit Header & Decoration Bar Reset */
+[data-testid="stDecoration"] {
+    display: none !important;
+}
+
+header[data-testid="stHeader"], .stAppHeader {
+    background: transparent !important;
+    background-color: transparent !important;
+    color: inherit !important;
+    border-bottom: 1px solid transparent !important;
+}
+
+header[data-testid="stHeader"] button,
+.stAppHeader button {
+    color: var(--text-muted) !important;
+    transition: color 0.15s ease;
+}
+
+header[data-testid="stHeader"] button:hover,
+.stAppHeader button:hover {
+    color: var(--text-primary) !important;
+}
+
+/* Main Container Layout */
+.block-container {
+    padding-top: 1.25rem !important;
+    padding-bottom: 2.5rem !important;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+    max-width: 1240px !important;
+}
+
+/* Headings Scale */
+h1, h2, h3, h4, h5, h6, .page-header-title {
+    font-family: var(--font-heading) !important;
+    letter-spacing: -0.025em;
+    font-weight: 700;
+}
+
+/* ==========================================================================
+   Sidebar Styling (Linear Precision)
+   ========================================================================== */
+[data-testid="stSidebar"] {
+    background-color: var(--bg-surface) !important;
+    border-right: 1px solid var(--border-subtle) !important;
+}
+
+[data-testid="stSidebar"] .block-container {
+    padding-top: 1rem !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+}
+
+.sidebar-brand-container {
+    padding: 0.25rem 0.25rem 0.5rem 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.sidebar-logo-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: #EFF6FF;
+    border: 1px solid #DBEAFE;
+    color: var(--accent-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.sidebar-app-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.2;
+    font-family: var(--font-heading);
+}
+
+.sidebar-app-tagline {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin: 2px 0 0 0;
+}
+
+.sidebar-divider {
+    height: 1px;
+    background: var(--border-subtle);
+    margin: 0.85rem 0;
+}
+
+.nav-section-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    margin-bottom: 0.45rem;
+    text-transform: uppercase;
+}
+
+/* Radio Navigation Styling */
+div[data-testid="stRadio"] > div {
+    gap: 0.25rem !important;
+}
+
+div[data-testid="stRadio"] label {
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 0.45rem 0.7rem;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    font-weight: 500;
+}
+
+div[data-testid="stRadio"] label,
+div[data-testid="stRadio"] label p,
+div[data-testid="stRadio"] label span,
+div[data-testid="stRadio"] label [data-testid="stMarkdownContainer"] p {
+    color: var(--text-secondary) !important;
+    font-size: 0.88rem !important;
+    font-weight: 500 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+div[data-testid="stRadio"] label:hover {
+    background-color: var(--bg-subtle) !important;
+}
+
+div[data-testid="stRadio"] label:hover p,
+div[data-testid="stRadio"] label:hover span {
+    color: var(--text-primary) !important;
+}
+
+div[data-testid="stRadio"] label[data-checked="true"],
+div[data-testid="stRadio"] label:has(input:checked) {
+    background-color: #EFF6FF !important;
+    border: 1px solid #BFDBFE !important;
+}
+
+div[data-testid="stRadio"] label[data-checked="true"] p,
+div[data-testid="stRadio"] label:has(input:checked) p,
+div[data-testid="stRadio"] label[data-checked="true"] span,
+div[data-testid="stRadio"] label:has(input:checked) span {
+    color: var(--accent-blue) !important;
+    font-weight: 600 !important;
+}
+
+/* Sidebar Status Card */
+.sidebar-status-card {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 0.75rem 0.85rem;
+    margin-top: 0.35rem;
+}
+
+.status-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.45rem;
+}
+
+.status-indicator {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: var(--accent-emerald);
+    display: inline-block;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.status-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.78rem;
+    margin-bottom: 0.25rem;
+}
+
+.status-label {
+    color: var(--text-muted);
+}
+
+.status-value {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    max-width: 130px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ==========================================================================
+   Page Headers (Linear Minimalist Banner)
+   ========================================================================== */
+.page-header-container {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.page-header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    padding: 0.15rem 0.55rem;
+    border-radius: 5px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+}
+
+.page-header-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.2rem;
+    line-height: 1.25;
+}
+
+.page-header-subtitle {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    line-height: 1.45;
+    margin-bottom: 0;
+}
+
+/* ==========================================================================
+   Cards & Surfaces (Varied Visual Hierarchy)
+   ========================================================================== */
+.feature-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 1.1rem 1.2rem;
+    height: 100%;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.feature-card:hover {
+    border-color: var(--border-strong);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+}
+
+.feature-icon-wrapper {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.65rem;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+}
+
+.blue-glow {
+    background: #EFF6FF;
+    border-color: #DBEAFE;
+    color: var(--accent-blue);
+}
+
+.purple-glow {
+    background: #FAF5FF;
+    border-color: #F3E8FF;
+    color: var(--accent-indigo);
+}
+
+.emerald-glow {
+    background: #ECFDF5;
+    border-color: #D1FAE5;
+    color: var(--accent-emerald);
+}
+
+.amber-glow {
+    background: #FFFBEB;
+    border-color: #FEF3C7;
+    color: var(--accent-amber);
+}
+
+.feature-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.feature-desc {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+    margin-bottom: 0.65rem;
+}
+
+/* Status Badges */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.badge-info {
+    background: #EFF6FF;
+    color: #1D4ED8;
+    border: 1px solid #DBEAFE;
+}
+
+.badge-purple {
+    background: #FAF5FF;
+    color: #6D28D9;
+    border: 1px solid #EDE9FE;
+}
+
+.badge-emerald {
+    background: #ECFDF5;
+    color: #047857;
+    border: 1px solid #D1FAE5;
+}
+
+.badge-amber {
+    background: #FFFBEB;
+    color: #B45309;
+    border: 1px solid #FEF3C7;
+}
+
+.badge-rose {
+    background: #FEF2F2;
+    color: #B91C1C;
+    border: 1px solid #FEE2E2;
+}
+
+.badge-neutral {
+    background: var(--bg-subtle);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle);
+}
+
+/* ==========================================================================
+   Dataset KPI Metric Cards
+   ========================================================================== */
+.dataset-kpi-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 0.75rem 0.85rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 82px;
+    transition: border-color 0.15s ease;
+}
+
+.dataset-kpi-card:hover {
+    border-color: var(--border-strong);
+}
+
+.blue-kpi {
+    border-top: 2px solid var(--accent-blue);
+}
+
+.emerald-kpi {
+    border-top: 2px solid var(--accent-emerald);
+}
+
+.purple-kpi {
+    border-top: 2px solid var(--accent-indigo);
+}
+
+.amber-kpi {
+    border-top: 2px solid var(--accent-amber);
+}
+
+.dataset-kpi-lbl {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.15rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.dataset-kpi-val {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+    margin-bottom: 0.2rem;
+    font-family: var(--font-mono);
+}
+
+.dataset-kpi-badge {
+    margin-top: auto;
+}
+
+/* ==========================================================================
+   Data Tables & Grids Polish
+   ========================================================================== */
+div[data-testid="stDataFrame"] {
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+}
+
+div[data-testid="stDataFrame"] table {
+    font-family: var(--font-sans);
+    font-size: 0.84rem !important;
+}
+
+.table-info-bar {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    padding: 0.45rem 0.8rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 0.65rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.table-info-bar strong {
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+}
+
+/* Section Divider */
+.section-divider {
+    height: 1px;
+    background: var(--border-subtle);
+    margin: 1.25rem 0;
+}
+
+/* Empty State Card */
+.empty-upload-card {
+    background: var(--bg-surface);
+    border: 1px dashed var(--border-strong);
+    border-radius: 10px;
+    padding: 2.2rem 1.8rem;
+    text-align: center;
+    margin-top: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.empty-upload-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.75rem;
+}
+
+.empty-upload-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+    font-family: var(--font-heading);
+}
+
+.empty-upload-desc {
+    font-size: 0.86rem;
+    color: var(--text-muted);
+    max-width: 520px;
+    margin: 0 auto 1.1rem auto;
+    line-height: 1.45;
+}
+
+.empty-upload-specs {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.spec-chip {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    padding: 0.2rem 0.55rem;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    font-family: var(--font-mono);
+}
+
+/* Button & Interactive Elements Polish */
+.stButton > button {
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    font-size: 0.84rem !important;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    letter-spacing: -0.01em !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+}
+
+.stButton > button:hover {
+    transform: translateY(-1px);
+}
+
+/* Tab Navigation Polish */
+div[data-testid="stTabs"] [data-baseweb="tab-list"] {
+    gap: 4px !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
+}
+
+div[data-testid="stTabs"] [data-baseweb="tab"] {
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    padding: 0.5rem 0.9rem !important;
+    color: var(--text-muted) !important;
+    border-radius: 6px 6px 0 0 !important;
+    transition: all 0.15s ease !important;
+}
+
+div[data-testid="stTabs"] [data-baseweb="tab"]:hover {
+    color: var(--text-primary) !important;
+    background: var(--bg-subtle) !important;
+}
+
+div[data-testid="stTabs"] [aria-selected="true"] {
+    color: var(--accent-blue) !important;
+    border-bottom: 2px solid var(--accent-blue) !important;
+    background: transparent !important;
+}
+
+/* App Footer */
+.app-footer {
+    text-align: center;
+    padding-top: 1.5rem;
+    padding-bottom: 1rem;
+    color: var(--text-faint);
+    font-size: 0.76rem;
+    border-top: 1px solid var(--border-subtle);
+    margin-top: 2.5rem;
+}

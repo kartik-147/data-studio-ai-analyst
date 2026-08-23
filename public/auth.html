@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Authentication - Data Studio</title>
+    <!-- Firebase App & Auth SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        body {
+            background-color: #0B0F17;
+            color: #F8FAFC;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            text-align: center;
+            padding: 20px;
+        }
+        .auth-box {
+            background: #111827;
+            border: 1px solid #1F2937;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+        }
+        .spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid rgba(99, 102, 241, 0.2);
+            border-top: 3px solid #6366F1;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .sub {
+            font-size: 0.84rem;
+            color: #94A3B8;
+            line-height: 1.4;
+        }
+        .btn-retry {
+            margin-top: 16px;
+            background: #4F46E5;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-box">
+        <div class="spinner" id="spinner"></div>
+        <div class="title" id="title">Signing in with Google</div>
+        <div class="sub" id="status">Please complete sign-in in the Google popup window...</div>
+        <button class="btn-retry" id="retryBtn" onclick="startSignIn()">Try Again</button>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBHUSbQNWdUGfpRi1UrUeiffQBM8Zdp4RM",
+            authDomain: "data-studio-analyst-79a.firebaseapp.com",
+            projectId: "data-studio-analyst-79a",
+            storageBucket: "data-studio-analyst-79a.firebasestorage.app",
+            messagingSenderId: "967565747127",
+            appId: "1:967565747127:web:0c7ddd5fda681d7d57fe32"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+
+        const auth = firebase.auth();
+        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+
+        function startSignIn() {
+            const status = document.getElementById("status");
+            const spinner = document.getElementById("spinner");
+            const retryBtn = document.getElementById("retryBtn");
+            
+            spinner.style.display = "block";
+            retryBtn.style.display = "none";
+            status.innerText = "Opening Google Sign-In...";
+
+            const provider = new firebase.auth.GoogleAuthProvider();
+            provider.addScope('profile');
+            provider.addScope('email');
+            provider.setCustomParameters({ prompt: 'select_account' });
+
+            auth.signInWithPopup(provider).then((result) => {
+                const user = result.user;
+                status.innerText = "Authenticated as " + (user.displayName || user.email) + "! Redirecting...";
+                
+                const payload = {
+                    uid: user.uid,
+                    name: user.displayName || user.email.split('@')[0],
+                    email: user.email,
+                    photo_url: user.photoURL || '',
+                    provider: 'google.com'
+                };
+
+                const jsonStr = JSON.stringify(payload);
+                const b64 = btoa(unescape(encodeURIComponent(jsonStr)));
+
+                try {
+                    localStorage.setItem('ds_firebase_auth_user', jsonStr);
+                } catch(e) {}
+
+                if (window.opener) {
+                    try {
+                        window.opener.postMessage({ type: 'FIREBASE_AUTH_SUCCESS', payload: payload, b64: b64 }, '*');
+                        const targetUrl = new URL(window.opener.location.href);
+                        targetUrl.searchParams.set("fb_user", b64);
+                        window.opener.location.href = targetUrl.toString();
+                    } catch(e) {
+                        console.error(e);
+                    }
+                    setTimeout(() => window.close(), 600);
+                } else {
+                    window.location.href = "/?fb_user=" + b64;
+                }
+            }).catch((error) => {
+                console.error("Auth error:", error);
+                spinner.style.display = "none";
+                retryBtn.style.display = "inline-block";
+                status.innerText = error.message || "Failed to authenticate with Google.";
+            });
+        }
+
+        // Auto trigger on popup open
+        window.onload = startSignIn;
+    </script>
+</body>
+</html>

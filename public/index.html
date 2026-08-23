@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Studio - EDA & Tabular Workbench</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0B0F17;
+        }
+
+        /* Full-screen App Frame (Keeps data-studio-analyst-79a.web.app in URL bar) */
+        #appFrame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+            background: #FFFFFF;
+        }
+
+        /* Loading / Connect Overlay */
+        #loadingOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0B0F17;
+            color: #F8FAFC;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.3s ease;
+        }
+
+        .spinner {
+            width: 44px;
+            height: 44px;
+            border: 3px solid #1E293B;
+            border-top: 3px solid #3B82F6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .app-title {
+            font-size: 1.3rem;
+            font-weight: 800;
+            margin-bottom: 6px;
+            letter-spacing: -0.02em;
+        }
+
+        .app-sub {
+            font-size: 0.86rem;
+            color: #94A3B8;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Connecting / Loading Screen -->
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="app-title">📊 Data Studio</div>
+        <div class="app-sub">Connecting to workspace on <strong>data-studio-analyst-79a.web.app</strong>...</div>
+    </div>
+
+    <!-- The Exact Data Studio Streamlit Application -->
+    <!-- REPLACE THIS with your deployed Streamlit URL (e.g., https://ai-data-analyst.streamlit.app/?embed=true) -->
+    <iframe id="appFrame" src="http://localhost:8501/?embed=true" allow="clipboard-read; clipboard-write"></iframe>
+
+    <script>
+        // Set this to your live cloud URL once deployed (e.g. on Streamlit Community Cloud, Hugging Face, or Cloud Run)
+        const LIVE_STREAMLIT_URL = "http://localhost:8501/?embed=true";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBHUSbQNWdUGfpRi1UrUeiffQBM8Zdp4RM",
+            authDomain: "data-studio-analyst-79a.firebaseapp.com",
+            projectId: "data-studio-analyst-79a",
+            storageBucket: "data-studio-analyst-79a.firebasestorage.app",
+            messagingSenderId: "967565747127",
+            appId: "1:967565747127:web:0c7ddd5fda681d7d57fe32"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+
+        const auth = firebase.auth();
+        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+
+        // Listen for onAuthStateChanged to sync state
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                const payload = {
+                    uid: user.uid,
+                    name: user.displayName || user.email.split('@')[0],
+                    email: user.email,
+                    photo_url: user.photoURL || '',
+                    provider: 'google.com'
+                };
+                const jsonStr = JSON.stringify(payload);
+                const b64 = btoa(unescape(encodeURIComponent(jsonStr)));
+                try {
+                    localStorage.setItem('ds_firebase_auth_user', jsonStr);
+                    if (iframe && iframe.contentWindow) {
+                        iframe.contentWindow.postMessage({ type: 'FIREBASE_AUTH_SUCCESS', payload: payload, b64: b64 }, '*');
+                    }
+                } catch(e) {}
+            }
+        });
+
+        // Listen for Google Auth trigger from the Streamlit iframe
+        window.addEventListener('message', async (event) => {
+            if (event.data && event.data.type === 'TRIGGER_FIREBASE_GOOGLE_AUTH') {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                provider.addScope('profile');
+                provider.addScope('email');
+                provider.setCustomParameters({ prompt: 'select_account' });
+
+                try {
+                    const result = await auth.signInWithPopup(provider);
+                    if (result && result.user) {
+                        const user = result.user;
+                        const payload = {
+                            uid: user.uid,
+                            name: user.displayName || user.email.split('@')[0],
+                            email: user.email,
+                            photo_url: user.photoURL || '',
+                            provider: 'google.com'
+                        };
+                        const jsonStr = JSON.stringify(payload);
+                        const b64 = btoa(unescape(encodeURIComponent(jsonStr)));
+                        try {
+                            localStorage.setItem('ds_firebase_auth_user', jsonStr);
+                            iframe.contentWindow.postMessage({ type: 'FIREBASE_AUTH_SUCCESS', payload: payload, b64: b64 }, '*');
+                            const currentSrc = new URL(iframe.src);
+                            currentSrc.searchParams.set("fb_user", b64);
+                            iframe.src = currentSrc.toString();
+                        } catch(e) {}
+                    }
+                } catch(error) {
+                    console.error("Top-level auth error:", error);
+                    try {
+                        iframe.contentWindow.postMessage({ type: 'FIREBASE_AUTH_ERROR', error: error.message, code: error.code }, '*');
+                    } catch(e) {}
+                }
+            }
+        });
+
+        const iframe = document.getElementById('appFrame');
+        const overlay = document.getElementById('loadingOverlay');
+
+        // Hide overlay once app is connected
+        iframe.onload = function() {
+            setTimeout(() => {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.style.display = 'none', 300);
+            }, 600);
+        };
+
+        // Fallback hide after 2.5s
+        setTimeout(() => {
+            overlay.style.opacity = '0';
+            setTimeout(() => overlay.style.display = 'none', 300);
+        }, 2500);
+    </script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+CustomerID,Name,Age,Region,AnnualSpend,LoyaltyStatus
+CUST-1001,Alice Johnson,28,North,1250.5,Gold
+CUST-1002,Bob Smith,34,South,3400.0,Platinum
+CUST-1003,Charlie Brown,45,East,890.25,Silver
+CUST-1004,Diana Prince,31,West,4520.8,Platinum
+CUST-1005,Evan Wright,29,North,2100.0,Gold
+CUST-1006,Fiona Gallagher,36,South,6780.4,Diamond
+CUST-1007,George Clark,42,East,1540.0,Silver
+CUST-1008,Hannah Abbott,27,West,3120.9,Gold
+CUST-1009,Ian Malcolm,50,North,7890.0,Diamond
+CUST-1010,Julia Roberts,39,South,2450.3,Gold
+CUST-1011,Kevin Bacon,48,East,5600.0,Platinum
+CUST-1012,Laura Croft,32,West,4120.5,Platinum
+CUST-1013,Michael Scott,43,North,1980.2,Silver
+CUST-1014,Nancy Wheeler,24,South,850.0,Bronze
+CUST-1015,Oscar Martinez,38,East,3340.6,Gold
+CUST-1016,Pam Beesly,30,West,2890.0,Gold
+CUST-1017,Quentin Tarantino,52,North,9150.0,Diamond
+CUST-1018,Rachel Green,29,South,4670.3,Platinum
+CUST-1019,Steve Rogers,35,East,5230.1,Platinum
+CUST-1020,Tony Stark,41,West,8920.4,Diamond
+CUST-1021,Uma Thurman,44,North,3780.0,Gold
+CUST-1022,Victor Stone,26,South,1650.8,Silver
+CUST-1023,Wanda Maximoff,33,East,6420.0,Platinum
+CUST-1024,Xavier Woods,37,West,2990.5,Gold
+CUST-1025,Yvonne Strahovski,30,North,4810.2,Platinum
