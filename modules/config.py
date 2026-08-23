@@ -401,7 +401,7 @@ def init_session_state():
 
 
 def add_activity_log(icon: str, action: str, detail: str):
-    """Record an action in the session activity log."""
+    """Record an action in the session activity log and persist to user account history."""
     if "activity_log" not in st.session_state:
         st.session_state.activity_log = []
     
@@ -410,8 +410,17 @@ def add_activity_log(icon: str, action: str, detail: str):
     if st.session_state.activity_log and st.session_state.activity_log[0] == new_entry:
         return
     st.session_state.activity_log.insert(0, new_entry)
-    # Keep only the last 8 events
-    st.session_state.activity_log = st.session_state.activity_log[:8]
+    # Keep only the last 15 events
+    st.session_state.activity_log = st.session_state.activity_log[:15]
+
+    # Save to user persistent account database
+    try:
+        from modules.auth import save_user_activity, get_current_user
+        current_user = get_current_user()
+        if current_user and current_user.get("email"):
+            save_user_activity(current_user["email"], icon, action, detail)
+    except Exception:
+        pass
 
 
 def reset_dataset_state():

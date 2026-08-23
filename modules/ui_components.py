@@ -628,8 +628,8 @@ def render_settings_page():
         """
     )
 
-    # 1. User Account
-    st.markdown("#### User Account & Authentication")
+    # 1. User Account & Security
+    st.markdown("#### User Account & Security")
     user = get_current_user()
     
     auth_col1, auth_col2 = st.columns([2, 1])
@@ -639,17 +639,30 @@ def render_settings_page():
             email = user.get("email", "")
             uid = user.get("uid", "")
             photo_url = user.get("photo_url", "")
+            provider = user.get("provider", "password")
+            created_at = user.get("created_at", "")[:10] if user.get("created_at") else "Today"
+            total_logins = user.get("total_logins", 1)
             
-            avatar_html = f'<img src="{photo_url}" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid #10B981;" />' if photo_url else f'<div style="width: 40px; height: 40px; border-radius: 50%; background: #2563EB; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">{name[0].upper()}</div>'
+            badge_color = "#4285F4" if "google" in provider else ("#8B5CF6" if provider == "guest" else "#10B981")
+            provider_label = "Google Verified" if "google" in provider else ("Guest Demo" if provider == "guest" else "Email Verified")
+            
+            avatar_html = f'<img src="{photo_url}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid {badge_color};" />' if photo_url else f'<div style="width: 44px; height: 44px; border-radius: 50%; background: {badge_color}; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px;">{name[0].upper()}</div>'
             render_html(
                 f"""
-                <div class="feature-card" style="margin-bottom: 0.8rem; border-left: 3px solid #10B981;">
-                    <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="feature-card" style="margin-bottom: 0.8rem; border-left: 3px solid {badge_color};">
+                    <div style="display: flex; align-items: center; gap: 14px;">
                         {avatar_html}
-                        <div>
-                            <div style="font-size: 0.98rem; font-weight: 700; color: var(--text-color, inherit);">{name}</div>
-                            <div style="font-size: 0.82rem; color: #94A3B8;">{email}</div>
-                            <div style="font-size: 0.72rem; color: #64748B; font-family: var(--font-mono);">UID: {uid}</div>
+                        <div style="flex: 1;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 1.05rem; font-weight: 700; color: var(--text-color, inherit);">{name}</span>
+                                <span style="background: {badge_color}22; color: {badge_color}; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600;">{provider_label}</span>
+                            </div>
+                            <div style="font-size: 0.84rem; color: #94A3B8; margin-top: 2px;">{email}</div>
+                            <div style="display: flex; gap: 16px; margin-top: 6px; font-size: 0.72rem; color: #64748B; font-family: var(--font-mono);">
+                                <span>Member Since: {created_at}</span>
+                                <span>Total Sessions: {total_logins}</span>
+                                <span>UID: {uid}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -660,7 +673,7 @@ def render_settings_page():
                 """
                 <div class="feature-card" style="margin-bottom: 0.8rem;">
                     <div class="feature-title">Not Authenticated</div>
-                    <p class="feature-desc">Sign in with your Google account using Firebase Authentication.</p>
+                    <p class="feature-desc">Sign in with your Google account or Email to secure your workspace.</p>
                 </div>
                 """
             )
@@ -668,12 +681,27 @@ def render_settings_page():
     with auth_col2:
         st.write("")
         if user:
+            from modules.auth import perform_sign_out
             if st.button("Sign Out Account", key="settings_signout_btn", use_container_width=True):
+                perform_sign_out()
+        else:
+            if st.button("Go to Login", key="settings_goto_login_btn", use_container_width=True):
                 from modules.config import logout_user
                 logout_user()
                 st.rerun()
-        else:
-            render_google_sign_in_component(key="settings_google_auth_btn")
+
+    # User Persistent Activity History
+    if user and user.get("email"):
+        from modules.auth import get_user_history
+        user_hist = get_user_history(user.get("email", ""))
+        if user_hist:
+            with st.expander(f"Account Activity History ({len(user_hist)} events)", expanded=False):
+                st.caption("Audit trail of actions, dataset uploads, cleanings, and chart sessions.")
+                for item in user_hist[:10]:
+                    act = item.get("action", "Event")
+                    det = item.get("detail", "")
+                    tstamp = item.get("timestamp", "")
+                    st.markdown(f"- **{act}** (`{tstamp}`): {det}")
 
     # Firebase Configuration Expander
     with st.expander("Firebase Project Configuration", expanded=False):

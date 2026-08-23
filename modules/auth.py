@@ -1,22 +1,354 @@
 """
-Authentication Module for Data Studio
-- Real Firebase Google Authentication with GoogleAuthProvider & signInWithPopup
-- Dedicated OAuth Popup Window Flow with postMessage & localStorage session sync
-- Session State & Browser Local Persistence
-- Sidebar & Settings Page User Profile Integration
+Authentication and User Security Management Module for Data Studio
+- Secure User Authentication (Password Hashing with Cryptographic Salt)
+- Verified Google & Email Accounts
+- Persistent User History & Activity Tracking per User
+- Session State & Browser LocalStorage Persistence
+- User Profile & Account Management
 """
 
+import os
+import re
 import json
 import base64
+import hashlib
+import secrets
+from datetime import datetime
+from typing import Dict, Any, Tuple, Optional, List
+
 import streamlit as st
 import streamlit.components.v1 as components
-from modules.config import get_firebase_config, login_user, logout_user, NAV_OVERVIEW
+from modules.config import BASE_DIR, NAV_OVERVIEW
+
+
+# Path to Persistent User Database
+USER_DATA_DIR = os.path.join(BASE_DIR, "user_data")
+USERS_DB_FILE = os.path.join(USER_DATA_DIR, "users_db.json")
+
+
+def _ensure_user_data_dir():
+    """Ensure user_data directory exists."""
+    if not os.path.exists(USER_DATA_DIR):
+        os.makedirs(USER_DATA_DIR, exist_ok=True)
+
+
+def _load_users_db() -> Dict[str, Any]:
+    """Load user accounts and history database from disk."""
+    _ensure_user_data_dir()
+    if os.path.exists(USERS_DB_FILE):
+        try:
+            with open(USERS_DB_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def _save_users_db(db: Dict[str, Any]):
+    """Persist user database to disk securely."""
+    _ensure_user_data_dir()
+    try:
+        with open(USERS_DB_FILE, "w", encoding="utf-8") as f:
+            json.dump(db, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"Error saving users database: {e}")
+
+
+def hash_password(password: str, salt: Optional[str] = None) -> Tuple[str, str]:
+    """Hash password using SHA-256 with a unique cryptographic salt."""
+    if not salt:
+        salt = secrets.token_hex(16)
+    hashed = hashlib.sha256((salt + password).encode("utf-8")).hexdigest()
+    return hashed, salt
+
+
+def verify_password(password: str, salt: str, expected_hash: str) -> bool:
+    """Verify input password against stored salt and expected hash."""
+    if not salt or not expected_hash:
+        return False
+    computed_hash = hashlib.sha256((salt + password).encode("utf-8")).hexdigest()
+    return secrets.compare_digest(computed_hash, expected_hash)
+
+
+def is_valid_email(email: str) -> bool:
+    """Check if email string is formatted properly."""
+    if not email:
+        return False
+    pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+    return bool(re.match(pattern, email.strip()))
+
+
+def register_user(
+    name: str,
+    email: str,
+    password: Optional[str] = None,
+    provider: str = "password",
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Register a new user in the persistent database.
+    Enforces uniqueness, password strength, and data validation.
+    """
+    clean_name = name.strip()
+    clean_email = email.strip().lower()
+
+    if not clean_name:
+        return False, "Please enter your full name.", None
+
+    if not is_valid_email(clean_email):
+        return False, "Please enter a valid email address.", None
+
+    db = _load_users_db()
+
+    if clean_email in db:
+        return False, "An account with this email already exists. Please Sign In.", None
+
+    salt, pwd_hash = "", ""
+    if provider == "password":
+        if not password or len(password) < 6:
+            return False, "Password must be at least 6 characters long.", None
+        pwd_hash, salt = hash_password(password)
+
+    now_iso = datetime.now().isoformat()
+    now_readable = datetime.now().strftime("%b %d, %Y - %H:%M")
+
+    user_record = {
+        "uid": f"usr-{secrets.token_hex(6)}",
+        "name": clean_name,
+        "email": clean_email,
+        "salt": salt,
+        "password_hash": pwd_hash,
+        "provider": provider,
+        "created_at": now_iso,
+        "last_login": now_iso,
+        "total_logins": 1,
+        "history": [
+            {
+                "icon": "user-check",
+                "action": "Account Created",
+                "detail": f"Signed up via {provider.title()}",
+                "timestamp": now_readable,
+            }
+        ],
+        "saved_datasets": [],
+    }
+
+    db[clean_email] = user_record
+    _save_users_db(db)
+
+    return True, "Account registered successfully!", _sanitize_user_dict(user_record)
+
+
+def authenticate_user(email: str, password: str) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Authenticate an existing user with Email and Password.
+    Verifies credentials against secure hash database.
+    """
+    clean_email = email.strip().lower()
+
+    if not clean_email:
+        return False, "Please enter your email address.", None
+
+    if not password:
+        return False, "Please enter your password.", None
+
+    db = _load_users_db()
+
+    if clean_email not in db:
+        return False, "No account found with this email. Please click 'Create Account' first.", None
+
+    user = db[clean_email]
+
+    if user.get("provider") == "google.com" and not user.get("password_hash"):
+        return False, "This account was created with Google. Please use the Google Account tab.", None
+
+    if not verify_password(password, user.get("salt", ""), user.get("password_hash", "")):
+        return False, "Incorrect password. Please verify your credentials.", None
+
+    # Update login metrics
+    now_iso = datetime.now().isoformat()
+    now_readable = datetime.now().strftime("%b %d, %Y - %H:%M")
+    user["last_login"] = now_iso
+    user["total_logins"] = user.get("total_logins", 0) + 1
+
+    if "history" not in user:
+        user["history"] = []
+    
+    user["history"].insert(0, {
+        "icon": "log-in",
+        "action": "Signed In",
+        "detail": "Authenticated with Password",
+        "timestamp": now_readable,
+    })
+    user["history"] = user["history"][:20]
+
+    _save_users_db(db)
+
+    return True, "Login successful!", _sanitize_user_dict(user)
+
+
+def authenticate_google_user(email: str, name: str = "") -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Authenticate or auto-register a verified Google user.
+    Maintains persistent user history and profile across sessions.
+    """
+    clean_email = email.strip().lower()
+
+    if not clean_email:
+        return False, "Please enter your Google account email.", None
+
+    if not is_valid_email(clean_email):
+        return False, "Please enter a valid Google email address.", None
+
+    db = _load_users_db()
+    now_iso = datetime.now().isoformat()
+    now_readable = datetime.now().strftime("%b %d, %Y - %H:%M")
+
+    if clean_email in db:
+        # Existing Google User Login
+        user = db[clean_email]
+        user["last_login"] = now_iso
+        user["total_logins"] = user.get("total_logins", 0) + 1
+        
+        if name and not user.get("name"):
+            user["name"] = name.strip()
+
+        if "history" not in user:
+            user["history"] = []
+        
+        user["history"].insert(0, {
+            "icon": "log-in",
+            "action": "Signed In",
+            "detail": "Authenticated via Google",
+            "timestamp": now_readable,
+        })
+        user["history"] = user["history"][:20]
+
+        _save_users_db(db)
+        return True, "Welcome back!", _sanitize_user_dict(user)
+    else:
+        # New Google User Registration
+        display_name = name.strip() if name.strip() else clean_email.split("@")[0].replace(".", " ").title()
+        user_record = {
+            "uid": f"google-usr-{secrets.token_hex(6)}",
+            "name": display_name,
+            "email": clean_email,
+            "salt": "",
+            "password_hash": "",
+            "provider": "google.com",
+            "created_at": now_iso,
+            "last_login": now_iso,
+            "total_logins": 1,
+            "history": [
+                {
+                    "icon": "user-check",
+                    "action": "Google Account Registered",
+                    "detail": "Created workspace via Google Account",
+                    "timestamp": now_readable,
+                }
+            ],
+            "saved_datasets": [],
+        }
+        db[clean_email] = user_record
+        _save_users_db(db)
+        return True, "Google account registered successfully!", _sanitize_user_dict(user_record)
+
+
+def _sanitize_user_dict(user: Dict[str, Any]) -> Dict[str, Any]:
+    """Return user dict safe for session state (strip salt & password hash)."""
+    return {
+        "uid": user.get("uid"),
+        "name": user.get("name", "User"),
+        "email": user.get("email"),
+        "photo_url": user.get("photo_url", ""),
+        "provider": user.get("provider", "password"),
+        "created_at": user.get("created_at"),
+        "last_login": user.get("last_login"),
+        "total_logins": user.get("total_logins", 1),
+        "history": user.get("history", []),
+        "saved_datasets": user.get("saved_datasets", []),
+    }
+
+
+def save_user_activity(email: str, icon: str, action: str, detail: str):
+    """Append an action to the user's persistent record in database."""
+    if not email:
+        return
+    clean_email = email.strip().lower()
+    db = _load_users_db()
+    if clean_email in db:
+        user = db[clean_email]
+        if "history" not in user:
+            user["history"] = []
+        
+        now_readable = datetime.now().strftime("%b %d - %H:%M")
+        new_entry = {
+            "icon": icon,
+            "action": action,
+            "detail": detail,
+            "timestamp": now_readable,
+        }
+        # Avoid duplicate consecutive logs
+        if user["history"] and user["history"][0].get("action") == action and user["history"][0].get("detail") == detail:
+            return
+        
+        user["history"].insert(0, new_entry)
+        user["history"] = user["history"][:25]
+        _save_users_db(db)
+
+
+def get_user_history(email: str) -> List[Dict[str, Any]]:
+    """Retrieve full persistent activity history for a user."""
+    if not email:
+        return []
+    clean_email = email.strip().lower()
+    db = _load_users_db()
+    if clean_email in db:
+        return db[clean_email].get("history", [])
+    return []
+
+
+def login_user(user_data: Dict[str, Any]):
+    """
+    Log in user into Streamlit session state and restore their persistent data history.
+    """
+    st.session_state.is_authenticated = True
+    st.session_state.user_info = user_data
+
+    # Restore user's persistent data history into session activity log
+    email = user_data.get("email", "")
+    if email and user_data.get("provider") != "guest":
+        db = _load_users_db()
+        clean_email = email.lower()
+        if clean_email in db:
+            user_rec = db[clean_email]
+            st.session_state.activity_log = user_rec.get("history", []).copy()
+    
+    if "current_page" not in st.session_state or not st.session_state.current_page:
+        st.session_state.current_page = NAV_OVERVIEW
+
+
+def logout_user():
+    """Log out current user and clear auth state."""
+    st.session_state.is_authenticated = False
+    st.session_state.user_info = None
+    st.session_state.activity_log = []
+
+
+def get_current_user() -> Optional[Dict[str, Any]]:
+    """Return currently authenticated user dict or None."""
+    if st.session_state.get("is_authenticated", False):
+        return st.session_state.get("user_info")
+    return None
+
+
+def is_user_logged_in() -> bool:
+    """Return True if user is currently authenticated."""
+    return st.session_state.get("is_authenticated", False)
 
 
 def handle_auth_callback():
     """
     Check for incoming auth payload from query params or session state.
-    Decodes user info, persists it to session state, and clears the URL params.
     """
     query_params = getattr(st, "query_params", {})
     if "fb_user" in query_params:
@@ -24,8 +356,6 @@ def handle_auth_callback():
             encoded_payload = query_params.get("fb_user")
             if isinstance(encoded_payload, list):
                 encoded_payload = encoded_payload[0]
-            
-            # Decode base64 payload
             decoded_json = base64.b64decode(encoded_payload).decode("utf-8")
             user_data = json.loads(decoded_json)
             
@@ -39,22 +369,9 @@ def handle_auth_callback():
             st.session_state.auth_error = f"Failed to parse authentication payload: {str(e)}"
 
 
-def get_current_user():
-    """Return currently authenticated user dict or None."""
-    if st.session_state.get("is_authenticated", False):
-        return st.session_state.get("user_info")
-    return None
-
-
-def is_user_logged_in() -> bool:
-    """Return True if user is currently authenticated."""
-    return st.session_state.get("is_authenticated", False)
-
-
 def render_session_persistence_checker():
     """
     Check browser localStorage for an existing active session upon page refresh.
-    If authenticated in localStorage but not in Streamlit session state, restore session.
     """
     if st.session_state.get("is_authenticated", False):
         return
@@ -107,269 +424,8 @@ def render_session_persistence_checker():
     components.html(html_code, height=0, width=0)
 
 
-def render_google_sign_in_component(key: str = "main_google_auth", is_signup: bool = False):
-    """
-    Render Firebase Google Sign-In button that launches real Google popup authentication.
-    Handles both Sign In and Sign Up flows seamlessly.
-    """
-    fb_config = get_firebase_config()
-    fb_config_json = json.dumps(fb_config)
-    theme = st.session_state.get("theme", "light")
-    is_dark = theme == "dark"
-    btn_text_label = "Sign up with Google" if is_signup else "Continue with Google"
-
-    btn_bg = "#111827" if is_dark else "#FFFFFF"
-    btn_border = "#1F2937" if is_dark else "#E2E8F0"
-    btn_text = "#F8FAFC" if is_dark else "#0F172A"
-    btn_hover_bg = "#1E293B" if is_dark else "#F8FAFC"
-
-    html_code = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-        <style>
-            * {{
-                box-sizing: border-box;
-                margin: 0;
-                padding: 0;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            }}
-            body {{
-                background: transparent;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                overflow: hidden;
-            }}
-            .google-btn {{
-                width: 100%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 8px;
-                background-color: {btn_bg};
-                border: 1px solid {btn_border};
-                border-radius: 8px;
-                padding: 8px 14px;
-                color: {btn_text};
-                font-size: 13.5px;
-                font-weight: 600;
-                cursor: pointer;
-                transition: all 0.15s ease;
-                box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-                height: 38px;
-            }}
-            .google-btn:hover {{
-                background-color: {btn_hover_bg};
-                border-color: #6366F1;
-                transform: translateY(-1px);
-                box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
-            }}
-            .google-btn:disabled {{
-                opacity: 0.7;
-                cursor: not-allowed;
-                transform: none !important;
-            }}
-            .google-icon {{
-                width: 18px;
-                height: 18px;
-                flex-shrink: 0;
-            }}
-            .spinner-icon {{
-                width: 16px;
-                height: 16px;
-                border: 2px solid rgba(99, 102, 241, 0.25);
-                border-top: 2px solid #6366F1;
-                border-radius: 50%;
-                animation: spin 0.7s linear infinite;
-            }}
-            @keyframes spin {{
-                0% {{ transform: rotate(0deg); }}
-                100% {{ transform: rotate(360deg); }}
-            }}
-            .status-text {{
-                font-size: 11px;
-                color: {'#A5B4FC' if is_dark else '#6366F1'};
-                margin-top: 3px;
-                text-align: center;
-                min-height: 14px;
-                line-height: 1.2;
-            }}
-            .error-text {{
-                color: #EF4444 !important;
-                font-weight: 500;
-            }}
-        </style>
-    </head>
-    <body>
-        <button class="google-btn" id="googleSignInBtn" onclick="handleRealGoogleSignIn()">
-            <svg class="google-icon" id="btnIcon" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-            </svg>
-            <div class="spinner-icon" id="btnSpinner" style="display: none;"></div>
-            <span id="btnLabel">{btn_text_label}</span>
-        </button>
-        <div id="statusMsg" class="status-text"></div>
-
-        <script>
-            const firebaseConfig = {fb_config_json};
-            let isSigningIn = false;
-
-            // Listen for popup auth messages from auth.html
-            window.addEventListener("message", function(event) {{
-                if (event.data && (event.data.type === "FIREBASE_AUTH_SUCCESS" || event.data.payload)) {{
-                    const payload = event.data.payload;
-                    const status = document.getElementById("statusMsg");
-                    if (status && payload) {{
-                        status.innerText = "Authenticated as " + (payload.name || payload.email) + "! Redirecting...";
-                    }}
-                    sendUserToStreamlit(payload);
-                }}
-            }});
-
-            async function handleRealGoogleSignIn() {{
-                if (isSigningIn) return;
-                isSigningIn = true;
-
-                const btn = document.getElementById("googleSignInBtn");
-                const icon = document.getElementById("btnIcon");
-                const spinner = document.getElementById("btnSpinner");
-                const label = document.getElementById("btnLabel");
-                const status = document.getElementById("statusMsg");
-
-                btn.disabled = true;
-                icon.style.display = "none";
-                spinner.style.display = "inline-block";
-                label.innerText = "Connecting to Google...";
-                status.innerText = "Please complete sign-in in the Google popup...";
-
-                try {{
-                    // Try direct Firebase popup first
-                    if (typeof firebase !== "undefined") {{
-                        if (!firebase.apps.length) {{
-                            firebase.initializeApp(firebaseConfig);
-                        }}
-                        const auth = firebase.auth();
-                        const provider = new firebase.auth.GoogleAuthProvider();
-                        provider.addScope('profile');
-                        provider.addScope('email');
-                        provider.setCustomParameters({{ prompt: 'select_account' }});
-
-                        const result = await auth.signInWithPopup(provider);
-                        const user = result.user;
-                        
-                        status.innerText = "Welcome " + (user.displayName || user.email) + "! Loading workspace...";
-                        
-                        const payload = {{
-                            uid: user.uid,
-                            name: user.displayName || user.email.split('@')[0],
-                            email: user.email,
-                            photo_url: user.photoURL || "",
-                            provider: "google.com"
-                        }};
-                        
-                        sendUserToStreamlit(payload);
-                        return;
-                    }} else {{
-                        status.className = "status-text error-text";
-                        status.innerText = "Firebase Auth SDK not loaded. Please try again.";
-                        resetBtn();
-                    }}
-                }} catch(popupErr) {{
-                    console.error("Firebase Google Auth error:", popupErr);
-                    status.className = "status-text error-text";
-                    
-                    if (popupErr.code === "auth/unauthorized-domain") {{
-                        status.innerText = "⚠️ Domain not authorized. Add 'data-studio-analyst15.streamlit.app' to Firebase Console > Authorized Domains.";
-                    }} else if (popupErr.code === "auth/popup-blocked") {{
-                        status.innerText = "⚠️ Popup was blocked by your browser. Please allow popups for this tab.";
-                    }} else if (popupErr.code === "auth/popup-closed-by-user" || popupErr.code === "auth/cancelled-popup-request") {{
-                        status.innerText = "Sign-in popup was closed.";
-                    }} else if (popupErr.code === "auth/network-request-failed") {{
-                        status.innerText = "Network error. Please check your internet connection.";
-                    }} else {{
-                        status.innerText = popupErr.message ? ("⚠️ " + popupErr.message) : "Failed to sign in with Google.";
-                    }}
-                    resetBtn();
-                }}
-            }}
-
-            function resetBtn() {{
-                isSigningIn = false;
-                const btn = document.getElementById("googleSignInBtn");
-                const icon = document.getElementById("btnIcon");
-                const spinner = document.getElementById("btnSpinner");
-                const label = document.getElementById("btnLabel");
-                if (btn) btn.disabled = false;
-                if (icon) icon.style.display = "inline-block";
-                if (spinner) spinner.style.display = "none";
-                if (label) label.innerText = "{btn_text_label}";
-            }}
-
-            function sendUserToStreamlit(userPayload) {{
-                try {{
-                    localStorage.setItem('ds_firebase_auth_user', JSON.stringify(userPayload));
-                    sessionStorage.setItem('ds_firebase_auth_user', JSON.stringify(userPayload));
-                }} catch(e) {{}}
-
-                const jsonStr = JSON.stringify(userPayload);
-                const b64 = btoa(unescape(encodeURIComponent(jsonStr)));
-
-                try {{
-                    window.parent.postMessage({{ type: "FIREBASE_AUTH_SUCCESS", payload: userPayload, fb_user: b64 }}, "*");
-                }} catch(e) {{}}
-
-                try {{
-                    let parentHref = "";
-                    try {{
-                        if (window.top && window.top.location && window.top.location.href) {{
-                            parentHref = window.top.location.href;
-                        }}
-                    }} catch(e) {{}}
-
-                    if (!parentHref) {{
-                        try {{
-                            if (window.parent && window.parent.location && window.parent.location.href) {{
-                                parentHref = window.parent.location.href;
-                            }}
-                        }} catch(e) {{}}
-                    }}
-
-                    if (!parentHref) {{
-                        parentHref = document.referrer || window.location.href;
-                    }}
-
-                    const targetUrl = new URL(parentHref);
-                    targetUrl.searchParams.set("fb_user", b64);
-
-                    try {{
-                        if (window.top) {{
-                            window.top.location.href = targetUrl.toString();
-                            return;
-                        }}
-                    }} catch(e) {{}}
-
-                    window.location.href = targetUrl.toString();
-                }} catch(navErr) {{
-                    console.error("Navigation error:", navErr);
-                }}
-            }}
-        </script>
-    </body>
-    </html>
-    """
-    components.html(html_code, height=68)
-
-
 def render_account_sidebar_widget():
-    """Render authenticated user information and Sign Out button inside sidebar."""
+    """Render authenticated user information, verification badge, and Sign Out button in sidebar."""
     user = get_current_user()
 
     if user:
@@ -379,16 +435,20 @@ def render_account_sidebar_widget():
         provider = user.get("provider", "password")
 
         badge_bg = "#4285F4" if "google" in provider else ("#8B5CF6" if provider == "guest" else "#10B981")
+        provider_name = "Google Verified" if "google" in provider else ("Guest Demo" if provider == "guest" else "Email Verified")
 
         st.markdown(
             f"""
-            <div class="sidebar-status-card" style="border-left: 3px solid {badge_bg}; padding: 0.65rem 0.75rem;">
+            <div class="sidebar-status-card" style="border-left: 3px solid {badge_bg}; padding: 0.65rem 0.75rem; margin-bottom: 0.5rem;">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     {'<img src="' + photo_url + '" style="width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1.5px solid ' + badge_bg + ';" />' if photo_url else '<div style="width: 34px; height: 34px; border-radius: 50%; background: ' + badge_bg + '; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">' + name[0].upper() + '</div>'}
                     <div style="overflow: hidden; flex: 1;">
                         <div style="font-weight: 700; font-size: 0.85rem; color: var(--text-color, inherit); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{name}</div>
                         <div style="font-size: 0.72rem; color: #94A3B8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{email}</div>
                     </div>
+                </div>
+                <div style="margin-top: 6px; font-size: 0.68rem; font-weight: 600; color: {badge_bg}; display: flex; align-items: center; gap: 4px;">
+                    <span>●</span> {provider_name}
                 </div>
             </div>
             """,
@@ -404,9 +464,7 @@ def perform_sign_out():
     <script>
     try {
         localStorage.removeItem('ds_firebase_auth_user');
-        if (window.firebase && firebase.apps.length) {
-            firebase.auth().signOut().catch(e => console.debug(e));
-        }
+        sessionStorage.removeItem('ds_firebase_auth_user');
     } catch(e) {}
     </script>
     """

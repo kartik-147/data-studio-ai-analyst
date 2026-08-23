@@ -11,9 +11,13 @@ import re
 import streamlit as st
 from modules.config import (
     APP_NAME,
+)
+from modules.auth import (
+    authenticate_user,
+    register_user,
+    authenticate_google_user,
     login_user,
 )
-from modules.auth import render_google_sign_in_component
 from modules.ui_components import render_theme_toggle_button, render_html
 from modules.icons import icon_svg
 
@@ -372,16 +376,12 @@ def render_login_page():
                     if not clean_gemail:
                         st.error("Please enter your Google or Gmail account email.")
                     else:
-                        display_name = clean_gemail.split("@")[0].replace(".", " ").title() if "@" in clean_gemail else clean_gemail.title()
-                        full_email = clean_gemail if "@" in clean_gemail else f"{clean_gemail}@gmail.com"
-                        login_user({
-                            "uid": f"google-usr-{abs(hash(clean_gemail)) % 1000000}",
-                            "name": display_name,
-                            "email": full_email,
-                            "photo_url": "",
-                            "provider": "google.com",
-                        })
-                        st.rerun()
+                        success, msg, user_data = authenticate_google_user(clean_gemail)
+                        if success and user_data:
+                            login_user(user_data)
+                            st.rerun()
+                        else:
+                            st.error(msg)
 
             with auth_tab_email:
                 with st.form("form_exact_signin", clear_on_submit=False):
@@ -391,19 +391,18 @@ def render_login_page():
 
                 if submit_signin:
                     clean_email = email_val.strip() if email_val else ""
+                    clean_pwd = pwd_val if pwd_val else ""
                     if not clean_email:
                         st.error("Please enter your email or username.")
+                    elif not clean_pwd:
+                        st.error("Please enter your password.")
                     else:
-                        display_name = clean_email.split("@")[0].capitalize() if "@" in clean_email else clean_email.capitalize()
-                        user_email = clean_email if "@" in clean_email else f"{clean_email.lower()}@datastudiokb.local"
-                        login_user({
-                            "uid": f"usr-{abs(hash(clean_email)) % 1000000}",
-                            "name": display_name,
-                            "email": user_email,
-                            "photo_url": "",
-                            "provider": "password",
-                        })
-                        st.rerun()
+                        success, msg, user_data = authenticate_user(clean_email, clean_pwd)
+                        if success and user_data:
+                            login_user(user_data)
+                            st.rerun()
+                        else:
+                            st.error(msg)
 
             st.write("")
             b_col1, b_col2 = st.columns([1.6, 1.2])
@@ -457,15 +456,12 @@ def render_login_page():
                     if not clean_gemail:
                         st.error("Please enter your Google Email address.")
                     else:
-                        final_name = clean_gname if clean_gname else clean_gemail.split("@")[0].replace(".", " ").title()
-                        login_user({
-                            "uid": f"google-usr-{abs(hash(clean_gemail)) % 1000000}",
-                            "name": final_name,
-                            "email": clean_gemail,
-                            "photo_url": "",
-                            "provider": "google.com",
-                        })
-                        st.rerun()
+                        success, msg, user_data = authenticate_google_user(clean_gemail, name=clean_gname)
+                        if success and user_data:
+                            login_user(user_data)
+                            st.rerun()
+                        else:
+                            st.error(msg)
 
             with auth_tab_reg_email:
                 with st.form("form_exact_signup", clear_on_submit=False):
@@ -477,20 +473,21 @@ def render_login_page():
                 if submit_signup:
                     clean_name = name_val.strip() if name_val else ""
                     clean_email = email_val.strip() if email_val else ""
+                    clean_pwd = pwd_val if pwd_val else ""
                     
                     if not clean_name:
                         st.error("Please enter your full name.")
                     elif not clean_email:
                         st.error("Please enter your email address.")
+                    elif not clean_pwd or len(clean_pwd) < 6:
+                        st.error("Password must be at least 6 characters long.")
                     else:
-                        login_user({
-                            "uid": f"usr-reg-{abs(hash(clean_email)) % 1000000}",
-                            "name": clean_name,
-                            "email": clean_email,
-                            "photo_url": "",
-                            "provider": "password",
-                        })
-                        st.rerun()
+                        success, msg, user_data = register_user(clean_name, clean_email, clean_pwd)
+                        if success and user_data:
+                            login_user(user_data)
+                            st.rerun()
+                        else:
+                            st.error(msg)
 
             st.write("")
             st.markdown('<div class="bottom-action-btn">', unsafe_allow_html=True)
