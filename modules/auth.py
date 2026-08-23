@@ -277,27 +277,27 @@ def render_google_sign_in_component(key: str = "main_google_auth", is_signup: bo
                         
                         sendUserToStreamlit(payload);
                         return;
-                    }}
-                }} catch(popupErr) {{
-                    console.warn("Direct popup error, opening auth window:", popupErr);
-                    
-                    // If blocked or environment restricted, open dedicated auth window
-                    const popupWidth = 500;
-                    const popupHeight = 600;
-                    const left = Math.max(0, (window.screen.width / 2) - (popupWidth / 2));
-                    const top = Math.max(0, (window.screen.height / 2) - (popupHeight / 2));
-                    
-                    const authWindow = window.open(
-                        "https://data-studio-analyst-79a.firebaseapp.com/auth.html",
-                        "GoogleAuth",
-                        "width=" + popupWidth + ",height=" + popupHeight + ",top=" + top + ",left=" + left
-                    );
-
-                    if (!authWindow || authWindow.closed || typeof authWindow.closed === "undefined") {{
+                    }} else {{
                         status.className = "status-text error-text";
-                        status.innerText = "⚠️ Pop-up was blocked. Please enable pop-ups for this page.";
+                        status.innerText = "Firebase Auth SDK not loaded. Please try again.";
                         resetBtn();
                     }}
+                }} catch(popupErr) {{
+                    console.error("Firebase Google Auth error:", popupErr);
+                    status.className = "status-text error-text";
+                    
+                    if (popupErr.code === "auth/unauthorized-domain") {{
+                        status.innerText = "⚠️ Domain not authorized. Add 'data-studio-analyst15.streamlit.app' to Firebase Console > Authorized Domains.";
+                    }} else if (popupErr.code === "auth/popup-blocked") {{
+                        status.innerText = "⚠️ Popup was blocked by your browser. Please allow popups for this tab.";
+                    }} else if (popupErr.code === "auth/popup-closed-by-user" || popupErr.code === "auth/cancelled-popup-request") {{
+                        status.innerText = "Sign-in popup was closed.";
+                    }} else if (popupErr.code === "auth/network-request-failed") {{
+                        status.innerText = "Network error. Please check your internet connection.";
+                    }} else {{
+                        status.innerText = popupErr.message ? ("⚠️ " + popupErr.message) : "Failed to sign in with Google.";
+                    }}
+                    resetBtn();
                 }}
             }}
 
@@ -365,7 +365,7 @@ def render_google_sign_in_component(key: str = "main_google_auth", is_signup: bo
     </body>
     </html>
     """
-    components.html(html_code, height=54)
+    components.html(html_code, height=68)
 
 
 def render_account_sidebar_widget():
