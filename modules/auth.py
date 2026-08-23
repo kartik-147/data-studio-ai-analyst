@@ -471,3 +471,8 @@ def perform_sign_out():
     components.html(clear_script, height=0, width=0)
     logout_user()
     st.rerun()
+
+
+def render_google_sign_in_component(key: str = "google_auth_btn"):
+    """Compatibility stub for components."""
+    pass

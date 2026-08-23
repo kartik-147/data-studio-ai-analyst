@@ -38,7 +38,6 @@ from modules.data_quality import render_data_quality_section
 from modules.auth import (
     get_current_user,
     render_account_sidebar_widget,
-    render_google_sign_in_component,
 )
 from modules.eda_tools import (
     render_correlation_heatmap,
@@ -91,7 +90,10 @@ def render_top_action_bar(key_suffix: str = "main"):
                 """
             )
         else:
-            render_google_sign_in_component(key=f"top_bar_auth_{key_suffix}")
+            if st.button("Sign In", key=f"top_bar_auth_{key_suffix}", use_container_width=True):
+                from modules.config import logout_user
+                logout_user()
+                st.rerun()
             
     with theme_col:
         render_theme_toggle_button(key_suffix=f"top_{key_suffix}")
