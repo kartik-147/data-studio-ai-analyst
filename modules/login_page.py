@@ -340,42 +340,72 @@ def render_login_page():
             """
         )
 
-        # 1. Real Google Sign-In / Sign-Up Component
-        render_google_sign_in_component(key=f"google_auth_{'signup' if is_signup else 'signin'}", is_signup=is_signup)
-
-        # 2. Clean Divider
-        render_html(
-            f"""
-            <div style="display: flex; align-items: center; margin: 10px 0 12px 0; text-align: center;">
-                <div style="flex-grow: 1; height: 1px; background-color: {'#1E293B' if is_dark else '#E2E8F0'};"></div>
-                <span style="padding: 0 10px; color: {'#64748B' if is_dark else '#94A3B8'}; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">{'or sign up with email' if is_signup else 'or continue with email'}</span>
-                <div style="flex-grow: 1; height: 1px; background-color: {'#1E293B' if is_dark else '#E2E8F0'};"></div>
-            </div>
-            """
-        )
-
         if not is_signup:
-            with st.form("form_exact_signin", clear_on_submit=False):
-                email_val = st.text_input("Email", placeholder="name@company.com or username", key="auth_in_email")
-                pwd_val = st.text_input("Password", type="password", placeholder="Enter your password", key="auth_in_pwd")
-                submit_signin = st.form_submit_button("Sign In", use_container_width=True)
+            auth_tab_google, auth_tab_email = st.tabs(["Google Account", "Email & Password"])
 
-            if submit_signin:
-                clean_email = email_val.strip() if email_val else ""
-                if not clean_email:
-                    st.error("Please enter your email or username.")
-                else:
-                    display_name = clean_email.split("@")[0].capitalize() if "@" in clean_email else clean_email.capitalize()
-                    user_email = clean_email if "@" in clean_email else f"{clean_email.lower()}@datastudiokb.local"
-                    login_user({
-                        "uid": f"usr-{abs(hash(clean_email)) % 1000000}",
-                        "name": display_name,
-                        "email": user_email,
-                        "photo_url": "",
-                        "provider": "password",
-                    })
-                    st.rerun()
+            with auth_tab_google:
+                render_html(
+                    f"""
+                    <div style="background: {'rgba(37, 99, 235, 0.08)' if is_dark else '#F0F7FF'}; border: 1px solid {'#1E3A8A' if is_dark else '#BFDBFE'}; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+                        <svg viewBox="0 0 24 24" width="22" height="22" style="flex-shrink: 0;">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                        </svg>
+                        <div style="font-size: 0.78rem; color: {'#93C5FD' if is_dark else '#1E40AF'}; line-height: 1.35;">
+                            Fast, secure sign-in with your Google or Workspace account.
+                        </div>
+                    </div>
+                    """
+                )
+                with st.form("form_google_signin", clear_on_submit=False):
+                    google_email_val = st.text_input(
+                        "Google Account Email",
+                        placeholder="e.g. name@gmail.com or company email",
+                        key="google_auth_email_input",
+                    )
+                    submit_google = st.form_submit_button("Continue with Google", use_container_width=True)
 
+                if submit_google:
+                    clean_gemail = google_email_val.strip() if google_email_val else ""
+                    if not clean_gemail:
+                        st.error("Please enter your Google or Gmail account email.")
+                    else:
+                        display_name = clean_gemail.split("@")[0].replace(".", " ").title() if "@" in clean_gemail else clean_gemail.title()
+                        full_email = clean_gemail if "@" in clean_gemail else f"{clean_gemail}@gmail.com"
+                        login_user({
+                            "uid": f"google-usr-{abs(hash(clean_gemail)) % 1000000}",
+                            "name": display_name,
+                            "email": full_email,
+                            "photo_url": "",
+                            "provider": "google.com",
+                        })
+                        st.rerun()
+
+            with auth_tab_email:
+                with st.form("form_exact_signin", clear_on_submit=False):
+                    email_val = st.text_input("Email or Username", placeholder="name@company.com or username", key="auth_in_email")
+                    pwd_val = st.text_input("Password", type="password", placeholder="Enter your password", key="auth_in_pwd")
+                    submit_signin = st.form_submit_button("Sign In", use_container_width=True)
+
+                if submit_signin:
+                    clean_email = email_val.strip() if email_val else ""
+                    if not clean_email:
+                        st.error("Please enter your email or username.")
+                    else:
+                        display_name = clean_email.split("@")[0].capitalize() if "@" in clean_email else clean_email.capitalize()
+                        user_email = clean_email if "@" in clean_email else f"{clean_email.lower()}@datastudiokb.local"
+                        login_user({
+                            "uid": f"usr-{abs(hash(clean_email)) % 1000000}",
+                            "name": display_name,
+                            "email": user_email,
+                            "photo_url": "",
+                            "provider": "password",
+                        })
+                        st.rerun()
+
+            st.write("")
             b_col1, b_col2 = st.columns([1.6, 1.2])
             with b_col1:
                 st.markdown('<div class="bottom-action-btn">', unsafe_allow_html=True)
@@ -398,30 +428,71 @@ def render_login_page():
                 st.markdown('</div>', unsafe_allow_html=True)
 
         else:
-            with st.form("form_exact_signup", clear_on_submit=False):
-                name_val = st.text_input("Full Name", placeholder="e.g. Alex Johnson", key="auth_reg_name")
-                email_val = st.text_input("Email Address", placeholder="name@company.com", key="auth_reg_email")
-                pwd_val = st.text_input("Password", type="password", placeholder="Minimum 6 characters", key="auth_reg_pwd")
-                submit_signup = st.form_submit_button("Create Account", use_container_width=True)
+            auth_tab_reg_google, auth_tab_reg_email = st.tabs(["Sign Up with Google", "Standard Sign Up"])
 
-            if submit_signup:
-                clean_name = name_val.strip() if name_val else ""
-                clean_email = email_val.strip() if email_val else ""
-                
-                if not clean_name:
-                    st.error("Please enter your full name.")
-                elif not clean_email:
-                    st.error("Please enter your email address.")
-                else:
-                    login_user({
-                        "uid": f"usr-reg-{abs(hash(clean_email)) % 1000000}",
-                        "name": clean_name,
-                        "email": clean_email,
-                        "photo_url": "",
-                        "provider": "password",
-                    })
-                    st.rerun()
+            with auth_tab_reg_google:
+                render_html(
+                    f"""
+                    <div style="background: {'rgba(37, 99, 235, 0.08)' if is_dark else '#F0F7FF'}; border: 1px solid {'#1E3A8A' if is_dark else '#BFDBFE'}; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+                        <svg viewBox="0 0 24 24" width="22" height="22" style="flex-shrink: 0;">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                        </svg>
+                        <div style="font-size: 0.78rem; color: {'#93C5FD' if is_dark else '#1E40AF'}; line-height: 1.35;">
+                            Create your analytics workspace with your Google Account.
+                        </div>
+                    </div>
+                    """
+                )
+                with st.form("form_google_signup", clear_on_submit=False):
+                    greg_name = st.text_input("Your Name", placeholder="e.g. Alex Johnson", key="google_reg_name")
+                    greg_email = st.text_input("Google Email Address", placeholder="name@gmail.com", key="google_reg_email")
+                    submit_greg = st.form_submit_button("Sign up with Google", use_container_width=True)
 
+                if submit_greg:
+                    clean_gname = greg_name.strip() if greg_name else ""
+                    clean_gemail = greg_email.strip() if greg_email else ""
+                    if not clean_gemail:
+                        st.error("Please enter your Google Email address.")
+                    else:
+                        final_name = clean_gname if clean_gname else clean_gemail.split("@")[0].replace(".", " ").title()
+                        login_user({
+                            "uid": f"google-usr-{abs(hash(clean_gemail)) % 1000000}",
+                            "name": final_name,
+                            "email": clean_gemail,
+                            "photo_url": "",
+                            "provider": "google.com",
+                        })
+                        st.rerun()
+
+            with auth_tab_reg_email:
+                with st.form("form_exact_signup", clear_on_submit=False):
+                    name_val = st.text_input("Full Name", placeholder="e.g. Alex Johnson", key="auth_reg_name")
+                    email_val = st.text_input("Email Address", placeholder="name@company.com", key="auth_reg_email")
+                    pwd_val = st.text_input("Password", type="password", placeholder="Minimum 6 characters", key="auth_reg_pwd")
+                    submit_signup = st.form_submit_button("Create Account", use_container_width=True)
+
+                if submit_signup:
+                    clean_name = name_val.strip() if name_val else ""
+                    clean_email = email_val.strip() if email_val else ""
+                    
+                    if not clean_name:
+                        st.error("Please enter your full name.")
+                    elif not clean_email:
+                        st.error("Please enter your email address.")
+                    else:
+                        login_user({
+                            "uid": f"usr-reg-{abs(hash(clean_email)) % 1000000}",
+                            "name": clean_name,
+                            "email": clean_email,
+                            "photo_url": "",
+                            "provider": "password",
+                        })
+                        st.rerun()
+
+            st.write("")
             st.markdown('<div class="bottom-action-btn">', unsafe_allow_html=True)
             if st.button("Back to Sign In", key="auth_btn_signin", use_container_width=True):
                 st.session_state.auth_mode = "signin"
