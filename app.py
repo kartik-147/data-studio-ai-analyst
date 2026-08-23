@@ -2,38 +2,7 @@
 Data Studio - Main Application Entry Point
 """
 
-import importlib
 import streamlit as st
-
-import modules.config
-importlib.reload(modules.config)
-
-import modules.auth
-importlib.reload(modules.auth)
-
-import modules.login_page
-importlib.reload(modules.login_page)
-
-import modules.overview
-importlib.reload(modules.overview)
-
-import modules.visualization
-importlib.reload(modules.visualization)
-
-import modules.data_quality
-importlib.reload(modules.data_quality)
-
-import modules.icons
-importlib.reload(modules.icons)
-
-import modules.eda_tools
-importlib.reload(modules.eda_tools)
-
-import modules.data_prep
-importlib.reload(modules.data_prep)
-
-import modules.ui_components
-importlib.reload(modules.ui_components)
 
 from modules.config import (
     APP_NAME,
@@ -42,14 +11,12 @@ from modules.config import (
     NAV_DATASET,
     NAV_DATA_PREPARATION,
     NAV_AI_ANALYST,
+    NAV_VISUALIZATION,
     NAV_DASHBOARD,
     NAV_SETTINGS,
     load_custom_css,
     init_session_state,
 )
-
-# Safe fallback for hot-reloading
-NAV_VISUALIZATION = getattr(modules.config, "NAV_VISUALIZATION", "Visualization")
 
 from modules.ui_components import (
     render_sidebar,
