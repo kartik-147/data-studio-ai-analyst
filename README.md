@@ -1,11 +1,14 @@
 # 📊 Data Studio — AI Data Analyst & EDA Workbench
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://data-studio-analyst15.streamlit.app/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit 1.30+](https://img.shields.io/badge/streamlit-1.30+-FF4B4B.svg)](https://streamlit.io/)
 [![Pandas](https://img.shields.io/badge/pandas-2.0+-150458.svg)](https://pandas.pydata.org/)
 [![Plotly](https://img.shields.io/badge/plotly-5.18+-3F4F75.svg)](https://plotly.com/)
 [![Firebase Auth](https://img.shields.io/badge/firebase-auth-FFCA28.svg)](https://firebase.google.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+> 🌐 **Live Web Application**: [https://data-studio-analyst15.streamlit.app/](https://data-studio-analyst15.streamlit.app/)
 
 An intelligent, full-stack **Exploratory Data Analysis (EDA)**, **Data Preparation**, **Interactive Visualization**, and **AI-Powered Data Analytics** web application built with **Python**, **Streamlit**, and **Firebase Authentication**.
 
@@ -192,7 +195,7 @@ AI data Analyst/
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/ai-data-analyst.git
+git clone https://github.com/kartik-147/data-studio-ai-analyst.git
 cd "AI data Analyst"
 
 # Create a virtual environment
@@ -210,16 +213,25 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Launching the Application
+### 3. Launching Locally
 
 ```bash
 streamlit run app.py
 ```
 
-Once started, open your browser and navigate to:
-```
-http://localhost:8501
-```
+Once started, open your browser and navigate to `http://localhost:8501`.
+
+### 4. Deploying to Streamlit Community Cloud
+
+1. Push your latest changes to GitHub:
+   ```bash
+   git add .
+   git commit -m "Update project structure and documentation"
+   git push origin main
+   ```
+2. Navigate to [share.streamlit.io](https://share.streamlit.io/) and sign in with GitHub.
+3. Select the repository `kartik-147/data-studio-ai-analyst`, branch `main`, and main file path `app.py`.
+4. Click **Deploy!** — The live app is deployed at: [https://data-studio-analyst15.streamlit.app/](https://data-studio-analyst15.streamlit.app/).
 
 ---
 

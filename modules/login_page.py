@@ -33,20 +33,18 @@ def render_login_page():
     auth_css = f"""
     <style>
     html, body, [data-testid="stAppViewContainer"], .stApp {{
-        overflow: hidden !important;
-        height: 100vh !important;
-        max-height: 100vh !important;
+        overflow-y: auto !important;
+        min-height: 100vh !important;
         background-color: {'#0B0F17' if is_dark else '#F8FAFC'} !important;
         background-image: {'radial-gradient(circle at 12% 88%, rgba(37, 99, 235, 0.12) 0%, transparent 40%), radial-gradient(circle at 88% 12%, rgba(79, 70, 229, 0.10) 0%, transparent 40%)' if is_dark else 'radial-gradient(circle at 10% 90%, rgba(219, 234, 254, 0.55) 0%, transparent 35%), radial-gradient(circle at 90% 10%, rgba(224, 231, 255, 0.45) 0%, transparent 35%)'} !important;
     }}
 
     .block-container {{
-        padding-top: 0.75rem !important;
-        padding-bottom: 0.75rem !important;
+        padding-top: 1rem !important;
+        padding-bottom: 2rem !important;
         padding-left: 2rem !important;
         padding-right: 2rem !important;
         max-width: 960px !important;
-        height: 100vh !important;
         display: flex !important;
         flex-direction: column !important;
         justify-content: flex-start !important;
@@ -338,6 +336,20 @@ def render_login_page():
             <div class="auth-section-wrapper">
                 <h2 class="auth-heading">{'Create Your Account' if is_signup else 'Welcome to Data Studio'}</h2>
                 <p class="auth-subheading">{'Sign up to access your analytics workspace.' if is_signup else 'Sign in to access your analytics workspace.'}</p>
+            </div>
+            """
+        )
+
+        # 1. Real Google Sign-In / Sign-Up Component
+        render_google_sign_in_component(key=f"google_auth_{'signup' if is_signup else 'signin'}", is_signup=is_signup)
+
+        # 2. Clean Divider
+        render_html(
+            f"""
+            <div style="display: flex; align-items: center; margin: 10px 0 12px 0; text-align: center;">
+                <div style="flex-grow: 1; height: 1px; background-color: {'#1E293B' if is_dark else '#E2E8F0'};"></div>
+                <span style="padding: 0 10px; color: {'#64748B' if is_dark else '#94A3B8'}; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">{'or sign up with email' if is_signup else 'or continue with email'}</span>
+                <div style="flex-grow: 1; height: 1px; background-color: {'#1E293B' if is_dark else '#E2E8F0'};"></div>
             </div>
             """
         )

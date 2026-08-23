@@ -67,12 +67,34 @@ def render_session_persistence_checker():
             if (saved) {
                 const user = JSON.parse(saved);
                 if (user && (user.email || user.uid)) {
-                    const currentUrl = new URL(window.parent.location.href);
+                    let parentHref = "";
+                    try {
+                        if (window.top && window.top.location && window.top.location.href) {
+                            parentHref = window.top.location.href;
+                        }
+                    } catch(e) {}
+                    if (!parentHref) {
+                        try {
+                            if (window.parent && window.parent.location && window.parent.location.href) {
+                                parentHref = window.parent.location.href;
+                            }
+                        } catch(e) {}
+                    }
+                    if (!parentHref) {
+                        parentHref = document.referrer || window.location.href;
+                    }
+                    const currentUrl = new URL(parentHref);
                     if (!currentUrl.searchParams.has("fb_user")) {
                         const jsonStr = JSON.stringify(user);
                         const b64 = btoa(unescape(encodeURIComponent(jsonStr)));
                         currentUrl.searchParams.set("fb_user", b64);
-                        window.parent.location.href = currentUrl.toString();
+                        try {
+                            if (window.top) {
+                                window.top.location.href = currentUrl.toString();
+                                return;
+                            }
+                        } catch(e) {}
+                        window.location.href = currentUrl.toString();
                     }
                 }
             }
@@ -85,14 +107,16 @@ def render_session_persistence_checker():
     components.html(html_code, height=0, width=0)
 
 
-def render_google_sign_in_component(key: str = "main_google_auth"):
+def render_google_sign_in_component(key: str = "main_google_auth", is_signup: bool = False):
     """
     Render Firebase Google Sign-In button that launches real Google popup authentication.
+    Handles both Sign In and Sign Up flows seamlessly.
     """
     fb_config = get_firebase_config()
     fb_config_json = json.dumps(fb_config)
     theme = st.session_state.get("theme", "light")
     is_dark = theme == "dark"
+    btn_text_label = "Sign up with Google" if is_signup else "Continue with Google"
 
     btn_bg = "#111827" if is_dark else "#FFFFFF"
     btn_border = "#1F2937" if is_dark else "#E2E8F0"
@@ -190,7 +214,7 @@ def render_google_sign_in_component(key: str = "main_google_auth"):
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
             </svg>
             <div class="spinner-icon" id="btnSpinner" style="display: none;"></div>
-            <span id="btnLabel">Continue with Google</span>
+            <span id="btnLabel">{btn_text_label}</span>
         </button>
         <div id="statusMsg" class="status-text"></div>
 
@@ -286,33 +310,56 @@ def render_google_sign_in_component(key: str = "main_google_auth"):
                 if (btn) btn.disabled = false;
                 if (icon) icon.style.display = "inline-block";
                 if (spinner) spinner.style.display = "none";
-                if (label) label.innerText = "Continue with Google";
+                if (label) label.innerText = "{btn_text_label}";
             }}
 
             function sendUserToStreamlit(userPayload) {{
                 try {{
                     localStorage.setItem('ds_firebase_auth_user', JSON.stringify(userPayload));
+                    sessionStorage.setItem('ds_firebase_auth_user', JSON.stringify(userPayload));
                 }} catch(e) {{}}
 
                 const jsonStr = JSON.stringify(userPayload);
                 const b64 = btoa(unescape(encodeURIComponent(jsonStr)));
 
                 try {{
-                    if (window.parent && window.parent.location && window.parent.location.href) {{
-                        const parentUrl = new URL(window.parent.location.href);
-                        parentUrl.searchParams.set("fb_user", b64);
-                        window.parent.location.href = parentUrl.toString();
-                        return;
-                    }}
+                    window.parent.postMessage({{ type: "FIREBASE_AUTH_SUCCESS", payload: userPayload, fb_user: b64 }}, "*");
                 }} catch(e) {{}}
 
                 try {{
-                    if (window.top && window.top.location && window.top.location.href) {{
-                        const topUrl = new URL(window.top.location.href);
-                        topUrl.searchParams.set("fb_user", b64);
-                        window.top.location.href = topUrl.toString();
+                    let parentHref = "";
+                    try {{
+                        if (window.top && window.top.location && window.top.location.href) {{
+                            parentHref = window.top.location.href;
+                        }}
+                    }} catch(e) {{}}
+
+                    if (!parentHref) {{
+                        try {{
+                            if (window.parent && window.parent.location && window.parent.location.href) {{
+                                parentHref = window.parent.location.href;
+                            }}
+                        }} catch(e) {{}}
                     }}
-                }} catch(e) {{}}
+
+                    if (!parentHref) {{
+                        parentHref = document.referrer || window.location.href;
+                    }}
+
+                    const targetUrl = new URL(parentHref);
+                    targetUrl.searchParams.set("fb_user", b64);
+
+                    try {{
+                        if (window.top) {{
+                            window.top.location.href = targetUrl.toString();
+                            return;
+                        }}
+                    }} catch(e) {{}}
+
+                    window.location.href = targetUrl.toString();
+                }} catch(navErr) {{
+                    console.error("Navigation error:", navErr);
+                }}
             }}
         </script>
     </body>
