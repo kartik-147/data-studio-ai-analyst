@@ -637,18 +637,25 @@ def render_settings_page():
     auth_col1, auth_col2 = st.columns([2, 1])
     with auth_col1:
         if user:
-            name = user.get("name", "User")
+            name = user.get("display_name") or user.get("name", "User")
             email = user.get("email", "")
             uid = user.get("uid", "")
             photo_url = user.get("photo_url", "")
-            provider = user.get("provider", "password")
+            provider = user.get("provider", "email_password")
             created_at = user.get("created_at", "")[:10] if user.get("created_at") else "Today"
             total_logins = user.get("total_logins", 1)
             
-            badge_color = "#4285F4" if "google" in provider else ("#8B5CF6" if provider == "guest" else "#10B981")
-            provider_label = "Google Verified" if "google" in provider else ("Guest Demo" if provider == "guest" else "Email Verified")
+            if provider == "google.com":
+                badge_color = "#4285F4"
+                provider_label = "Google Verified"
+            elif provider == "guest":
+                badge_color = "#8B5CF6"
+                provider_label = "Guest Demo"
+            else:
+                badge_color = "#10B981"
+                provider_label = "Email Verified"
             
-            avatar_html = f'<img src="{photo_url}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid {badge_color};" />' if photo_url else f'<div style="width: 44px; height: 44px; border-radius: 50%; background: {badge_color}; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px;">{name[0].upper()}</div>'
+            avatar_html = f'<img src="{photo_url}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid {badge_color}; object-fit: cover;" />' if photo_url else f'<div style="width: 44px; height: 44px; border-radius: 50%; background: {badge_color}; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px;">{name[0].upper()}</div>'
             render_html(
                 f"""
                 <div class="feature-card" style="margin-bottom: 0.8rem; border-left: 3px solid {badge_color};">
@@ -675,7 +682,7 @@ def render_settings_page():
                 """
                 <div class="feature-card" style="margin-bottom: 0.8rem;">
                     <div class="feature-title">Not Authenticated</div>
-                    <p class="feature-desc">Sign in with your Google account or Email to secure your workspace.</p>
+                    <p class="feature-desc">Sign in with your Email credentials to secure your workspace.</p>
                 </div>
                 """
             )

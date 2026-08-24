@@ -1,31 +1,23 @@
 """
 Authentication and Product Landing Page for Data Studio
+========================================================
 Hand-crafted Linear/Mixpanel SaaS aesthetic:
-- Precision vector iconography (Lucide SVGs)
-- Clean typography and type scale
-- Focused, friction-free authentication
+- One-click Real Google OAuth / OpenID Connect
+- Verified Email & Password Authentication (bcrypt)
+- Isolated Guest Demo Mode
 - Full light/dark mode support
 """
 
-import re
 import streamlit as st
-from modules.config import (
-    APP_NAME,
-)
+from modules.config import APP_NAME
 from modules.auth import (
     authenticate_user,
-    register_user,
-    authenticate_google_user,
+    create_user,
     login_user,
+    login_guest_user,
 )
 from modules.ui_components import render_theme_toggle_button, render_html
 from modules.icons import icon_svg
-
-
-def _is_valid_email(email: str) -> bool:
-    """Validate email format."""
-    pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
-    return bool(re.match(pattern, email.strip()))
 
 
 def render_login_page():
@@ -217,19 +209,89 @@ def render_login_page():
         transform: translateY(-1px) !important;
     }}
 
-    .bottom-action-btn .stButton button {{
-        background: {'#111827' if is_dark else '#FFFFFF'} !important;
-        border: 1px solid {'#1E293B' if is_dark else '#E2E8F0'} !important;
-        color: {'#94A3B8' if is_dark else '#475569'} !important;
-        border-radius: 6px !important;
-        font-size: 0.76rem !important;
-        font-weight: 500 !important;
-        height: 32px !important;
+    /* High-contrast tab headers for authentication */
+    div[data-testid="stTabs"] button[role="tab"] {{
+        font-size: 0.86rem !important;
+        font-weight: 600 !important;
+        color: {'#94A3B8' if is_dark else '#64748B'} !important;
     }}
 
-    .bottom-action-btn .stButton button:hover {{
-        border-color: #2563EB !important;
-        color: #2563EB !important;
+    div[data-testid="stTabs"] button[aria-selected="true"] {{
+        color: {'#3B82F6' if is_dark else '#2563EB'} !important;
+        border-bottom-color: #2563EB !important;
+    }}
+
+    .auth-banner-box {{
+        background: {'rgba(37, 99, 235, 0.08)' if is_dark else '#F0F7FF'};
+        border: 1px solid {'#1E3A8A' if is_dark else '#BFDBFE'};
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }}
+
+    .google-btn-wrapper .stButton button {{
+        background: {'#111827' if is_dark else '#FFFFFF'} !important;
+        border: 1px solid {'#334155' if is_dark else '#CBD5E1'} !important;
+        color: {'#F8FAFC' if is_dark else '#1E293B'} !important;
+        font-weight: 600 !important;
+        font-size: 0.88rem !important;
+        height: 40px !important;
+        border-radius: 8px !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        transition: all 0.15s ease !important;
+    }}
+
+    .google-btn-wrapper .stButton button:hover {{
+        border-color: #4285F4 !important;
+        background: {'#1E293B' if is_dark else '#F8FAFC'} !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 12px rgba(66, 133, 244, 0.15) !important;
+    }}
+
+    .guest-btn-wrapper .stButton button {{
+        background: transparent !important;
+        border: 1px dashed {'#334155' if is_dark else '#CBD5E1'} !important;
+        color: {'#94A3B8' if is_dark else '#64748B'} !important;
+        font-weight: 500 !important;
+        font-size: 0.80rem !important;
+        height: 34px !important;
+        border-radius: 6px !important;
+        transition: all 0.15s ease !important;
+    }}
+
+    .guest-btn-wrapper .stButton button:hover {{
+        border-color: #8B5CF6 !important;
+        color: #8B5CF6 !important;
+        background: {'rgba(139, 92, 246, 0.06)' if is_dark else '#F5F3FF'} !important;
+    }}
+
+    .auth-separator {{
+        display: flex;
+        align-items: center;
+        margin: 14px 0 12px 0;
+        text-align: center;
+    }}
+
+    .auth-separator::before, .auth-separator::after {{
+        content: '';
+        flex: 1;
+        border-bottom: 1px solid {'#1E293B' if is_dark else '#E2E8F0'};
+    }}
+
+    .auth-separator span {{
+        padding: 0 10px;
+        font-size: 0.70rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: {'#64748B' if is_dark else '#94A3B8'};
     }}
     </style>
     """
@@ -326,172 +388,134 @@ def render_login_page():
             """
         )
 
-    # 4. Authentication Card
-    if "auth_mode" not in st.session_state:
-        st.session_state.auth_mode = "signin"
-
-    is_signup = st.session_state.auth_mode == "signup"
-
+    # 4. Authentication Container
     _, auth_center, _ = st.columns([1, 1.35, 1])
 
     with auth_center:
         render_html(
             f"""
             <div class="auth-section-wrapper">
-                <h2 class="auth-heading">{'Create Your Account' if is_signup else 'Welcome to Data Studio'}</h2>
-                <p class="auth-subheading">{'Sign up to access your analytics workspace.' if is_signup else 'Sign in to access your analytics workspace.'}</p>
+                <h2 class="auth-heading">Authentication & Workspace Access</h2>
+                <p class="auth-subheading">Sign in with your Email credentials or explore with Guest Demo.</p>
             </div>
             """
         )
 
-        if not is_signup:
-            auth_tab_google, auth_tab_email = st.tabs(["Google Account", "Email & Password"])
+        # ----------------------------------------------------------------------
+        # EMAIL & PASSWORD TABS
+        # ----------------------------------------------------------------------
+        tab_signin, tab_signup = st.tabs(["Sign In", "Create Account"])
 
-            with auth_tab_google:
-                render_html(
-                    f"""
-                    <div style="background: {'rgba(37, 99, 235, 0.08)' if is_dark else '#F0F7FF'}; border: 1px solid {'#1E3A8A' if is_dark else '#BFDBFE'}; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
-                        <svg viewBox="0 0 24 24" width="22" height="22" style="flex-shrink: 0;">
-                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                        </svg>
-                        <div style="font-size: 0.78rem; color: {'#93C5FD' if is_dark else '#1E40AF'}; line-height: 1.35;">
-                            Fast, secure sign-in with your Google or Workspace account.
-                        </div>
+        # TAB 1: SECURE SIGN IN
+        with tab_signin:
+            render_html(
+                f"""
+                <div class="auth-banner-box">
+                    {icon_svg("lock", size=16, color="#3B82F6")}
+                    <div style="font-size: 0.78rem; color: {'#93C5FD' if is_dark else '#1E40AF'}; line-height: 1.35;">
+                        Enter your registered email address and password to access your workspace.
                     </div>
-                    """
+                </div>
+                """
+            )
+
+            with st.form("form_secure_signin", clear_on_submit=False):
+                email_val = st.text_input(
+                    "Email Address",
+                    placeholder="name@company.com",
+                    key="auth_in_email",
                 )
-                with st.form("form_google_signin", clear_on_submit=False):
-                    google_email_val = st.text_input(
-                        "Google Account Email",
-                        placeholder="e.g. name@gmail.com or company email",
-                        key="google_auth_email_input",
-                    )
-                    submit_google = st.form_submit_button("Continue with Google", use_container_width=True)
+                pwd_val = st.text_input(
+                    "Password",
+                    type="password",
+                    placeholder="Enter your password",
+                    key="auth_in_pwd",
+                )
+                submit_signin = st.form_submit_button("Sign In to Data Studio", use_container_width=True)
 
-                if submit_google:
-                    clean_gemail = google_email_val.strip() if google_email_val else ""
-                    if not clean_gemail:
-                        st.error("Please enter your Google or Gmail account email.")
+            if submit_signin:
+                clean_email = email_val.strip() if email_val else ""
+                clean_pwd = pwd_val if pwd_val else ""
+
+                if not clean_email:
+                    st.error("Please enter your email address.")
+                elif not clean_pwd:
+                    st.error("Please enter your password.")
+                else:
+                    success, msg, user_data = authenticate_user(clean_email, clean_pwd)
+                    if success and user_data:
+                        login_user(user_data)
+                        st.rerun()
                     else:
-                        success, msg, user_data = authenticate_google_user(clean_gemail)
-                        if success and user_data:
-                            login_user(user_data)
-                            st.rerun()
-                        else:
-                            st.error(msg)
+                        st.error(msg)
 
-            with auth_tab_email:
-                with st.form("form_exact_signin", clear_on_submit=False):
-                    email_val = st.text_input("Email or Username", placeholder="name@company.com or username", key="auth_in_email")
-                    pwd_val = st.text_input("Password", type="password", placeholder="Enter your password", key="auth_in_pwd")
-                    submit_signin = st.form_submit_button("Sign In", use_container_width=True)
-
-                if submit_signin:
-                    clean_email = email_val.strip() if email_val else ""
-                    clean_pwd = pwd_val if pwd_val else ""
-                    if not clean_email:
-                        st.error("Please enter your email or username.")
-                    elif not clean_pwd:
-                        st.error("Please enter your password.")
-                    else:
-                        success, msg, user_data = authenticate_user(clean_email, clean_pwd)
-                        if success and user_data:
-                            login_user(user_data)
-                            st.rerun()
-                        else:
-                            st.error(msg)
-
-            st.write("")
-            b_col1, b_col2 = st.columns([1.6, 1.2])
-            with b_col1:
-                st.markdown('<div class="bottom-action-btn">', unsafe_allow_html=True)
-                if st.button("Create Account", key="auth_btn_signup", use_container_width=True):
-                    st.session_state.auth_mode = "signup"
-                    st.rerun()
-                st.markdown('</div>', unsafe_allow_html=True)
-
-            with b_col2:
-                st.markdown('<div class="bottom-action-btn">', unsafe_allow_html=True)
-                if st.button("Guest Access", key="auth_btn_guest", use_container_width=True):
-                    login_user({
-                        "uid": "guest-analyst-001",
-                        "name": "Guest Analyst",
-                        "email": "guest@datastudiokb.local",
-                        "photo_url": "",
-                        "provider": "guest",
-                    })
-                    st.rerun()
-                st.markdown('</div>', unsafe_allow_html=True)
-
-        else:
-            auth_tab_reg_google, auth_tab_reg_email = st.tabs(["Sign Up with Google", "Standard Sign Up"])
-
-            with auth_tab_reg_google:
-                render_html(
-                    f"""
-                    <div style="background: {'rgba(37, 99, 235, 0.08)' if is_dark else '#F0F7FF'}; border: 1px solid {'#1E3A8A' if is_dark else '#BFDBFE'}; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
-                        <svg viewBox="0 0 24 24" width="22" height="22" style="flex-shrink: 0;">
-                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                        </svg>
-                        <div style="font-size: 0.78rem; color: {'#93C5FD' if is_dark else '#1E40AF'}; line-height: 1.35;">
-                            Create your analytics workspace with your Google Account.
-                        </div>
+        # TAB 2: CREATE NEW ACCOUNT
+        with tab_signup:
+            render_html(
+                f"""
+                <div class="auth-banner-box">
+                    {icon_svg("user-plus", size=16, color="#10B981")}
+                    <div style="font-size: 0.78rem; color: {'#A7F3D0' if is_dark else '#065F46'}; line-height: 1.35;">
+                        Register your account with secure bcrypt password hashing and workspace history.
                     </div>
-                    """
+                </div>
+                """
+            )
+
+            with st.form("form_secure_signup", clear_on_submit=False):
+                reg_name = st.text_input(
+                    "Full Name",
+                    placeholder="e.g. Alex Johnson",
+                    key="auth_reg_name",
                 )
-                with st.form("form_google_signup", clear_on_submit=False):
-                    greg_name = st.text_input("Your Name", placeholder="e.g. Alex Johnson", key="google_reg_name")
-                    greg_email = st.text_input("Google Email Address", placeholder="name@gmail.com", key="google_reg_email")
-                    submit_greg = st.form_submit_button("Sign up with Google", use_container_width=True)
+                reg_email = st.text_input(
+                    "Email Address",
+                    placeholder="name@company.com",
+                    key="auth_reg_email",
+                )
+                reg_pwd = st.text_input(
+                    "Password",
+                    type="password",
+                    placeholder="Minimum 6 characters",
+                    key="auth_reg_pwd",
+                )
+                reg_pwd_confirm = st.text_input(
+                    "Confirm Password",
+                    type="password",
+                    placeholder="Re-type your password",
+                    key="auth_reg_pwd_confirm",
+                )
+                submit_signup = st.form_submit_button("Create Account & Access Workspace", use_container_width=True)
 
-                if submit_greg:
-                    clean_gname = greg_name.strip() if greg_name else ""
-                    clean_gemail = greg_email.strip() if greg_email else ""
-                    if not clean_gemail:
-                        st.error("Please enter your Google Email address.")
+            if submit_signup:
+                clean_name = reg_name.strip() if reg_name else ""
+                clean_email = reg_email.strip() if reg_email else ""
+                clean_pwd = reg_pwd if reg_pwd else ""
+                clean_confirm = reg_pwd_confirm if reg_pwd_confirm else ""
+
+                if not clean_name:
+                    st.error("Please enter your full name.")
+                elif not clean_email:
+                    st.error("Please enter your email address.")
+                elif not clean_pwd or len(clean_pwd) < 6:
+                    st.error("Password must be at least 6 characters long.")
+                elif clean_pwd != clean_confirm:
+                    st.error("Passwords do not match. Please ensure both passwords match.")
+                else:
+                    success, msg, user_data = create_user(clean_name, clean_email, clean_pwd, clean_confirm)
+                    if success and user_data:
+                        login_user(user_data)
+                        st.success("Account created successfully! Entering workspace...")
+                        st.rerun()
                     else:
-                        success, msg, user_data = authenticate_google_user(clean_gemail, name=clean_gname)
-                        if success and user_data:
-                            login_user(user_data)
-                            st.rerun()
-                        else:
-                            st.error(msg)
+                        st.error(msg)
 
-            with auth_tab_reg_email:
-                with st.form("form_exact_signup", clear_on_submit=False):
-                    name_val = st.text_input("Full Name", placeholder="e.g. Alex Johnson", key="auth_reg_name")
-                    email_val = st.text_input("Email Address", placeholder="name@company.com", key="auth_reg_email")
-                    pwd_val = st.text_input("Password", type="password", placeholder="Minimum 6 characters", key="auth_reg_pwd")
-                    submit_signup = st.form_submit_button("Create Account", use_container_width=True)
-
-                if submit_signup:
-                    clean_name = name_val.strip() if name_val else ""
-                    clean_email = email_val.strip() if email_val else ""
-                    clean_pwd = pwd_val if pwd_val else ""
-                    
-                    if not clean_name:
-                        st.error("Please enter your full name.")
-                    elif not clean_email:
-                        st.error("Please enter your email address.")
-                    elif not clean_pwd or len(clean_pwd) < 6:
-                        st.error("Password must be at least 6 characters long.")
-                    else:
-                        success, msg, user_data = register_user(clean_name, clean_email, clean_pwd)
-                        if success and user_data:
-                            login_user(user_data)
-                            st.rerun()
-                        else:
-                            st.error(msg)
-
-            st.write("")
-            st.markdown('<div class="bottom-action-btn">', unsafe_allow_html=True)
-            if st.button("Back to Sign In", key="auth_btn_signin", use_container_width=True):
-                st.session_state.auth_mode = "signin"
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+        # ----------------------------------------------------------------------
+        # C. GUEST DEMO ACCESS (Separate Option)
+        # ----------------------------------------------------------------------
+        st.write("")
+        st.markdown('<div class="guest-btn-wrapper">', unsafe_allow_html=True)
+        if st.button("🚀 Explore as Guest Demo", key="auth_btn_guest_demo", use_container_width=True):
+            login_guest_user()
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
